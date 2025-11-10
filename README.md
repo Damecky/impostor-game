@@ -66,24 +66,26 @@
 
   <div id="result" class="hidden card"></div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+  <!-- Firebase CDN -->
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js"></script>
 
+  <script>
+    // Konfiguracja Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAy1mE_Q3fJo9W2Aa9EQUqp0L0Bn53XPHc",
       authDomain: "impostor-game-ebc12.firebaseapp.com",
       projectId: "impostor-game-ebc12",
-      storageBucket: "impostor-game-ebc12.firebasestorage.app",
+      storageBucket: "impostor-game-ebc12.appspot.com",
       messagingSenderId: "561452405867",
       appId: "1:561452405867:web:24fb4cdf0320c2c3488d2e",
       measurementId: "G‑DKBLTBFHJ5",
-      databaseURL: "https://impostor-game-ebc12-default-rtdb.europe-west1.firebasedatabase.app"
+      databaseURL: "https://impostor-game-ebc12-default-rtdb.europe-west1.firebasedatabase.app/"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
+    // Lista haseł
     const words = [
       "TikTok", "mem", "Netflix", "lody", "rower", "żaba", "cebula", "pączek",
       "pizza", "drama", "uwu", "sigma", "snap", "Discord", "YouTube", "szkoła",
@@ -101,64 +103,63 @@
       return Math.floor(1000 + Math.random() * 9000).toString();
     }
 
-    async function createRoom() {
+    // Funkcja globalna
+    window.createRoom = async function() {
       isHost = true;
       const code = randomCode();
-      roomRef = ref(db, "rooms/" + code);
-      await set(roomRef, { players: {}, started: false });
+      roomRef = db.ref("rooms/" + code);
+      await roomRef.set({ players: {}, started: false });
 
       document.getElementById("menu").classList.add("hidden");
       document.getElementById("hostPanel").classList.remove("hidden");
       document.getElementById("roomCode").innerText = code;
 
-      const playerRef = ref(db, `rooms/${code}/players/${playerId}`);
-      await set(playerRef, { ready: true });
+      const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
+      await playerRef.set({ ready: true });
 
-      onValue(roomRef, (snapshot) => {
+      roomRef.on("value", snapshot => {
         const data = snapshot.val();
         const count = data.players ? Object.keys(data.players).length : 0;
         document.getElementById("players").innerText = `Gracze: ${count}/4`;
       });
     }
 
-    async function joinRoom() {
+    window.joinRoom = async function() {
       const code = document.getElementById("joinCode").value.trim();
       if (!code) return alert("Podaj kod pokoju!");
-      roomRef = ref(db, "rooms/" + code);
+      roomRef = db.ref("rooms/" + code);
 
-      const snapshot = await get(roomRef);
-      if (!snapshot.exists()) return alert("Pokój nie istnieje!");
+      roomRef.get().then(snapshot => {
+        if (!snapshot.exists()) return alert("Pokój nie istnieje!");
 
-      const playerRef = ref(db, `rooms/${code}/players/${playerId}`);
-      await set(playerRef, { ready: true });
+        const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
+        playerRef.set({ ready: true });
 
-      document.getElementById("menu").classList.add("hidden");
-      document.getElementById("waiting").classList.remove("hidden");
+        document.getElementById("menu").classList.add("hidden");
+        document.getElementById("waiting").classList.remove("hidden");
 
-      onValue(roomRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data.started && data.roles && data.word) {
-          const role = data.roles[playerId];
-          showResult(role === "impostor" ? "🕵️‍♂️ JESTEŚ IMPOSTOREM!" : `🔤 Hasło: ${data.word}`);
-        }
+        roomRef.on("value", snap => {
+          const data = snap.val();
+          if (data.started && data.roles && data.word) {
+            const role = data.roles[playerId];
+            showResult(role === "impostor" ? "🕵️‍♂️ JESTEŚ IMPOSTOREM!" : `🔤 Hasło: ${data.word}`);
+          }
+        });
       });
     }
 
-    async function startGame() {
-      const snap = await get(roomRef);
-      const data = snap.val();
+    window.startGame = async function() {
+      const snapshot = await roomRef.get();
+      const data = snapshot.val();
       const players = Object.keys(data.players || {});
-      if (players.length !== 4) {
-        alert("Musi być dokładnie 4 graczy!");
-        return;
-      }
+      if (players.length !== 4) return alert("Musi być dokładnie 4 graczy!");
 
       const word = words[Math.floor(Math.random() * words.length)];
       const impostor = players[Math.floor(Math.random() * players.length)];
       const roles = {};
       players.forEach(p => roles[p] = p === impostor ? "impostor" : "normal");
 
-      await update(roomRef, { started: true, roles, word });
+      await roomRef.update({ started: true, roles, word });
       showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
     }
 
@@ -170,11 +171,10 @@
       res.classList.remove("hidden");
     }
 
-    // Podłączanie przycisków
+    // Przycisk start
     document.getElementById("btnCreate").addEventListener("click", createRoom);
     document.getElementById("btnJoin").addEventListener("click", joinRoom);
     document.getElementById("btnStart").addEventListener("click", startGame);
-
   </script>
 </body>
 </html>

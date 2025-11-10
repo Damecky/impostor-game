@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Impostor Game</title>
+  <title>🕵️‍♂️ Gra Impostor</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -13,7 +13,7 @@
       margin: 0;
       padding: 0;
     }
-    h1 { color: #00d26a; }
+    h1 { color: #00d26a; margin-top: 30px; }
     button {
       background: #00d26a;
       color: black;
@@ -40,6 +40,7 @@
       background: #161b22;
       border-radius: 12px;
       display: inline-block;
+      font-size: 22px;
     }
   </style>
 </head>
@@ -48,7 +49,6 @@
 
   <div id="menu">
     <button onclick="createRoom()">Stwórz grę</button>
-    <br>
     <p>lub</p>
     <input id="joinCode" placeholder="Kod pokoju">
     <button onclick="joinRoom()">Dołącz</button>
@@ -67,43 +67,42 @@
   <div id="result" class="hidden card"></div>
 
   <script type="module">
+    // Firebase importy
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, update, push } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, set, get, onValue, update } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+    // Twoja konfiguracja Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAy1mE_Q3fJo9W2Aa9EQUqp0L0Bn53XPHc",
+      authDomain: "impostor-game-ebc12.firebaseapp.com",
+      projectId: "impostor-game-ebc12",
+      storageBucket: "impostor-game-ebc12.firebasestorage.app",
+      messagingSenderId: "561452405867",
+      appId: "1:561452405867:web:24fb4cdf0320c2c3488d2e",
+      measurementId: "G-DKBLTBFHJ5",
+      databaseURL: "https://impostor-game-ebc12-default-rtdb.firebaseio.com"
+    };
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAy1mE_Q3fJo9W2Aa9EQUqp0L0Bn53XPHc",
-  authDomain: "impostor-game-ebc12.firebaseapp.com",
-  projectId: "impostor-game-ebc12",
-  storageBucket: "impostor-game-ebc12.firebasestorage.app",
-  messagingSenderId: "561452405867",
-  appId: "1:561452405867:web:24fb4cdf0320c2c3488d2e",
-  measurementId: "G-DKBLTBFHJ5"
-};
+    // Inicjalizacja
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
+    // Lista haseł (różne: młodzieżowe, viralowe, codzienne)
     const words = [
-      "TikTok", "mem", "herbata", "rower", "żaba", "Netflix", "sushi", "domówka", "szkoła",
-      "Instagram", "mleko", "pralka", "pizza", "samochód", "cebula", "długopis", "fryzura",
-      "kaktus", "Discord", "YouTube", "gra", "zegar", "wakacje", "dżem", "kanapka",
-      "Chad", "Sigma", "cringe", "uwu", "sigma face", "drama", "ban", "flex", "emoji",
-      "keyboard", "gimby", "team", "snap", "lody", "tramwaj", "pies", "kot", "park", "miłość"
+      "TikTok", "mem", "Netflix", "lody", "rower", "żaba", "cebula", "pączek",
+      "pizza", "drama", "uwu", "sigma", "snap", "Discord", "YouTube", "szkoła",
+      "tramwaj", "wakacje", "park", "kot", "pies", "telefon", "komputer", "fryzura",
+      "emoji", "Chad", "Sigma face", "ban", "flex", "kanapka", "długopis", "kaktus",
+      "drip", "domówka", "herbata", "miłość", "gra", "keyboard", "film", "sport",
+      "pralka", "sushi", "team", "keyboard", "muzyka", "Spotify", "pociąg"
     ];
 
+    // Dane gracza
     let playerId = Math.random().toString(36).substring(2, 9);
     let roomRef = null;
     let isHost = false;
 
+    // Funkcje
     function randomCode() {
       return Math.floor(1000 + Math.random() * 9000).toString();
     }
@@ -112,10 +111,8 @@ const analytics = getAnalytics(app);
       isHost = true;
       const code = randomCode();
       roomRef = ref(db, "rooms/" + code);
-      await set(roomRef, {
-        players: {},
-        started: false
-      });
+      await set(roomRef, { players: {}, started: false });
+
       document.getElementById("menu").classList.add("hidden");
       document.getElementById("hostPanel").classList.remove("hidden");
       document.getElementById("roomCode").innerText = code;
@@ -128,7 +125,7 @@ const analytics = getAnalytics(app);
         const count = data.players ? Object.keys(data.players).length : 0;
         document.getElementById("players").innerText = `Gracze: ${count}/4`;
       });
-    }
+    };
 
     window.joinRoom = async function() {
       const code = document.getElementById("joinCode").value.trim();
@@ -148,10 +145,10 @@ const analytics = getAnalytics(app);
         const data = snapshot.val();
         if (data.started && data.roles && data.word) {
           const role = data.roles[playerId];
-          showResult(role === "impostor" ? "JESTEŚ IMPOSTOREM 🕵️‍♂️" : `Hasło: ${data.word}`);
+          showResult(role === "impostor" ? "🕵️‍♂️ JESTEŚ IMPOSTOREM!" : `🔤 Hasło: ${data.word}`);
         }
       });
-    }
+    };
 
     window.startGame = async function() {
       const snap = await get(roomRef);
@@ -168,9 +165,8 @@ const analytics = getAnalytics(app);
       players.forEach(p => roles[p] = p === impostor ? "impostor" : "normal");
 
       await update(roomRef, { started: true, roles, word });
-
-      showResult(`Hasło zostało rozlosowane! Sprawdź na swoim telefonie.`);
-    }
+      showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
+    };
 
     function showResult(text) {
       document.getElementById("hostPanel").classList.add("hidden");

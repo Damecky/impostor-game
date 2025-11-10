@@ -80,7 +80,7 @@
       messagingSenderId: "561452405867",
       appId: "1:561452405867:web:24fb4cdf0320c2c3488d2e",
       measurementId: "G-DKBLTBFHJ5",
-      databaseURL: "https://impostor-game-ebc12-default-rtdb.firebaseio.com"
+      databaseURL: "https://console.firebase.google.com/project/impostor-game-ebc12/database/impostor-game-ebc12-default-rtdb/data/~2F"
     };
 
     // Inicjalizacja

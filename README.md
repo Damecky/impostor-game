@@ -80,18 +80,18 @@ input {
 
 <script>
 const firebaseConfig = {
- const firebaseConfig = {
   apiKey: "AIzaSyAy1mE_Q3fJo9W2Aa9EQUqp0L0Bn53XPHc",
   authDomain: "impostor-game-ebc12.firebaseapp.com",
-  databaseURL: "https://impostor-game-ebc12-default-rtdb.europe-west1.firebasedatabase.app",
+  databaseURL: "https://impostor-game-ebc12-default-rtdb.europe-west1.firebasedatabase.app/",
   projectId: "impostor-game-ebc12",
-  storageBucket: "impostor-game-ebc12.firebasestorage.app",
+  storageBucket: "impostor-game-ebc12.appspot.com",
   messagingSenderId: "561452405867",
-  appId: "1:561452405867:web:9693e06b2fbe6ade488d2e",
-  measurementId: "G-J4BWTKFFCH"
+  appId: "1:561452405867:web:24fb4cdf0320c2c3488d2e",
+  measurementId: "G-DKBLTBFHJ5"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
 
 const words = [
   "TikTok","mem","Netflix","lody","rower","żaba","cebula","pączek",

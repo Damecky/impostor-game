@@ -5,56 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🕵️‍♂️ Impostor Game</title>
 <style>
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #0d1117;
-  color: #fff;
-  text-align: center;
-  margin: 0;
-  padding: 0;
-}
+body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #fff; text-align: center; margin: 0; padding: 0; }
 h1 { color: #00d26a; margin-top: 30px; font-size: 28px; }
-button {
-  background: #00d26a;
-  color: black;
-  border: none;
-  border-radius: 12px;
-  padding: 20px 40px;
-  font-size: 20px;
-  margin: 15px 0;
-  cursor: pointer;
-  width: 80%;
-  max-width: 300px;
-}
+button { background: #00d26a; color: black; border: none; border-radius: 12px; padding: 20px 40px; font-size: 20px; margin: 15px 0; cursor: pointer; width: 80%; max-width: 300px; }
 button:hover { background: #00b85d; }
-input {
-  font-size: 20px;
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  width: 80%;
-  max-width: 300px;
-  text-align: center;
-  margin-bottom: 15px;
-}
+input { font-size: 20px; padding: 15px; border-radius: 10px; border: 1px solid #ccc; width: 80%; max-width: 300px; text-align: center; margin-bottom: 15px; }
 .hidden { display: none; }
-.card {
-  margin-top: 50px;
-  padding: 30px;
-  background: #161b22;
-  border-radius: 20px;
-  display: inline-block;
-  font-size: 24px;
-  max-width: 90%;
-  word-wrap: break-word;
-}
+.card { margin-top: 50px; padding: 30px; background: #161b22; border-radius: 20px; display: inline-block; font-size: 24px; max-width: 90%; word-wrap: break-word; }
 </style>
 </head>
 <body>
 <h1>🕵️‍♂️ Impostor Game</h1>
 
 <div id="menu">
-  <input id="playerName" placeholder="Twoje imię" />
+  <input id="playerName" placeholder="Twoje imię (HOST jeśli host)" />
   <button id="btnCreate">Stwórz grę</button>
   <p style="margin:10px 0;">lub</p>
   <input id="joinCode" placeholder="Kod pokoju" />
@@ -69,7 +33,7 @@ input {
 </div>
 
 <div id="waiting" class="hidden">
-  <h2>Oczekiwanie na rozpoczęcie...</h2>
+  <h2 id="waitingText">Oczekiwanie na rozpoczęcie...</h2>
 </div>
 
 <div id="result" class="hidden card"></div>
@@ -105,16 +69,14 @@ let roomRef = null;
 let isHost = false;
 let playerName = "";
 
-function randomCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
-}
+function randomCode() { return Math.floor(1000 + Math.random() * 9000).toString(); }
 
-// Tworzenie pokoju
+// Funkcja tworzenia pokoju
 window.createRoom = async function() {
   playerName = document.getElementById("playerName").value.trim();
   if (!playerName) return alert("Podaj swoje imię!");
   
-  isHost = true;
+  isHost = playerName.toUpperCase().includes("HOST"); 
   const code = randomCode();
   roomRef = db.ref("rooms/" + code);
   await roomRef.set({ players: {}, started: false });
@@ -124,21 +86,21 @@ window.createRoom = async function() {
   document.getElementById("roomCode").innerText = code;
 
   const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
-  await playerRef.set({ name: playerName, ready: true });
+  await playerRef.set({ name: playerName, ready: true, isHost });
 
   roomRef.on("value", snapshot => {
     const data = snapshot.val();
-    const playersList = data.players ? Object.values(data.players).map(p => p.name) : [];
+    const playersList = data.players ? Object.values(data.players).filter(p => !p.isHost).map(p => p.name) : [];
     document.getElementById("players").innerText = `Gracze: ${playersList.length}/4 (${playersList.join(", ")})`;
     document.getElementById("btnStart").disabled = playersList.length !== 4;
   });
 }
 
-// Dołączanie do pokoju
+// Funkcja dołączenia do pokoju
 window.joinRoom = async function() {
   playerName = document.getElementById("playerName").value.trim();
   if (!playerName) return alert("Podaj swoje imię!");
-  
+
   const code = document.getElementById("joinCode").value.trim();
   if (!code) return alert("Podaj kod pokoju!");
   roomRef = db.ref("rooms/" + code);
@@ -146,31 +108,35 @@ window.joinRoom = async function() {
   const snapshot = await roomRef.get();
   if (!snapshot.exists()) return alert("Pokój nie istnieje!");
 
+  const isHostLocal = playerName.toUpperCase().includes("HOST");
   const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
-  await playerRef.set({ name: playerName, ready: true });
+  await playerRef.set({ name: playerName, ready: true, isHost: isHostLocal });
 
   document.getElementById("menu").classList.add("hidden");
   document.getElementById("waiting").classList.remove("hidden");
+  document.getElementById("waitingText").innerText = "Oczekiwanie na rozpoczęcie...";
 
   roomRef.on("value", snap => {
     const data = snap.val();
     if (data.started && data.roles && data.word) {
-      const role = data.roles[playerId];
-      showResult(role === "impostor" ? "🕵️‍♂️ JESTEŚ IMPOSTOREM!" : `🔤 Hasło: ${data.word}`);
+      if (isHostLocal) {
+        showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
+        document.getElementById("btnNewWord").classList.remove("hidden");
+      } else {
+        showResult("📲 Odkryj kolejne hasło!");
+      }
     }
   });
 }
 
 // Rozpoczęcie gry / pierwsza runda
-window.startGame = async function() {
-  await startRound();
-}
+window.startGame = async function() { await startRound(); }
 
-// Nowa runda
+// Rozlosowanie rundy
 window.startRound = async function() {
   const snapshot = await roomRef.get();
   const data = snapshot.val();
-  const players = Object.keys(data.players || {});
+  const players = Object.keys(data.players || {}).filter(pid => !data.players[pid].isHost);
   if (players.length !== 4) return alert("Musi być dokładnie 4 graczy!");
 
   const word = words[Math.floor(Math.random() * words.length)];
@@ -179,13 +145,16 @@ window.startRound = async function() {
   players.forEach(p => roles[p] = p === impostor ? "impostor" : "normal");
 
   await roomRef.update({ started: true, roles, word });
-  showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
 
-  // Pokaż przycisk hosta do nowej rundy
-  if (isHost) document.getElementById("btnNewWord").classList.remove("hidden");
+  // Host widzi nową rundę
+  if (isHost) {
+    showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
+    document.getElementById("btnNewWord").classList.remove("hidden");
+  } else {
+    showResult("📲 Odkryj kolejne hasło!");
+  }
 }
 
-// Funkcja do wyświetlania wyniku / hasła
 function showResult(text) {
   document.getElementById("hostPanel").classList.add("hidden");
   document.getElementById("waiting").classList.add("hidden");
@@ -197,5 +166,7 @@ function showResult(text) {
 document.getElementById("btnCreate").addEventListener("click", createRoom);
 document.getElementById("btnJoin").addEventListener("click", joinRoom);
 document.getElementById("btnStart").addEventListener("click", startGame);
-document.g
-
+document.getElementById("btnNewWord").addEventListener("click", startRound);
+</script>
+</body>
+</html>

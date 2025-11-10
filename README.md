@@ -5,20 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🕵️‍♂️ Impostor Game</title>
 <style>
-body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #fff; text-align: center; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #0d1117;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+}
 h1 { color: #00d26a; margin-top: 30px; font-size: 28px; }
-button { background: #00d26a; color: black; border: none; border-radius: 12px; padding: 20px 40px; font-size: 20px; margin: 15px 0; cursor: pointer; width: 80%; max-width: 300px; }
+button {
+  background: #00d26a;
+  color: black;
+  border: none;
+  border-radius: 12px;
+  padding: 20px 40px;
+  font-size: 20px;
+  margin: 15px 0;
+  cursor: pointer;
+  width: 80%;
+  max-width: 300px;
+}
 button:hover { background: #00b85d; }
-input { font-size: 20px; padding: 15px; border-radius: 10px; border: 1px solid #ccc; width: 80%; max-width: 300px; text-align: center; margin-bottom: 15px; }
+input {
+  font-size: 20px;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  width: 80%;
+  max-width: 300px;
+  text-align: center;
+  margin-bottom: 15px;
+}
 .hidden { display: none; }
-.card { margin-top: 50px; padding: 30px; background: #161b22; border-radius: 20px; display: inline-block; font-size: 24px; max-width: 90%; word-wrap: break-word; }
+.card {
+  margin-top: 50px;
+  padding: 30px;
+  background: #161b22;
+  border-radius: 20px;
+  display: inline-block;
+  font-size: 24px;
+  max-width: 90%;
+  word-wrap: break-word;
+}
 </style>
 </head>
 <body>
 <h1>🕵️‍♂️ Impostor Game</h1>
 
 <div id="menu">
-  <input id="playerName" placeholder="Twoje imię (HOST jeśli host)" />
+  <input id="playerName" placeholder="Twoje imię" />
   <button id="btnCreate">Stwórz grę</button>
   <p style="margin:10px 0;">lub</p>
   <input id="joinCode" placeholder="Kod pokoju" />
@@ -28,29 +64,31 @@ input { font-size: 20px; padding: 15px; border-radius: 10px; border: 1px solid #
 <div id="hostPanel" class="hidden">
   <h2>Kod pokoju: <span id="roomCode"></span></h2>
   <p id="players">Gracze: 0/4</p>
-  <button id="btnStart">Rozdaj role</button>
-  <button id="btnNewWord" class="hidden">Nowa runda</button>
+  <button id="btnStart" disabled>Rozdaj role</button>
 </div>
 
 <div id="waiting" class="hidden">
-  <h2 id="waitingText">Oczekiwanie na rozpoczęcie...</h2>
+  <h2>Oczekiwanie na rozpoczęcie...</h2>
+  <p id="playerList"></p>
 </div>
 
 <div id="result" class="hidden card"></div>
 
+<!-- Firebase UMD -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
 const firebaseConfig = {
+ const firebaseConfig = {
   apiKey: "AIzaSyAy1mE_Q3fJo9W2Aa9EQUqp0L0Bn53XPHc",
   authDomain: "impostor-game-ebc12.firebaseapp.com",
-  databaseURL: "https://impostor-game-ebc12-default-rtdb.europe-west1.firebasedatabase.app/",
+  databaseURL: "https://impostor-game-ebc12-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "impostor-game-ebc12",
-  storageBucket: "impostor-game-ebc12.appspot.com",
+  storageBucket: "impostor-game-ebc12.firebasestorage.app",
   messagingSenderId: "561452405867",
-  appId: "1:561452405867:web:24fb4cdf0320c2c3488d2e",
-  measurementId: "G-DKBLTBFHJ5"
+  appId: "1:561452405867:web:9693e06b2fbe6ade488d2e",
+  measurementId: "G-J4BWTKFFCH"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
@@ -69,24 +107,26 @@ let roomRef = null;
 let isHost = false;
 let playerName = "";
 
-function randomCode() { return Math.floor(1000 + Math.random() * 9000).toString(); }
+function randomCode() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
 
-// Funkcja tworzenia pokoju
+// Utwórz pokój
 window.createRoom = async function() {
   playerName = document.getElementById("playerName").value.trim();
   if (!playerName) return alert("Podaj swoje imię!");
-  
-  isHost = playerName.toUpperCase().includes("HOST"); 
+  isHost = true;
   const code = randomCode();
   roomRef = db.ref("rooms/" + code);
   await roomRef.set({ players: {}, started: false });
 
+  // Dodaj hosta
+  const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
+  await playerRef.set({ name: playerName, isHost: true });
+
   document.getElementById("menu").classList.add("hidden");
   document.getElementById("hostPanel").classList.remove("hidden");
   document.getElementById("roomCode").innerText = code;
-
-  const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
-  await playerRef.set({ name: playerName, ready: true, isHost });
 
   roomRef.on("value", snapshot => {
     const data = snapshot.val();
@@ -96,44 +136,38 @@ window.createRoom = async function() {
   });
 }
 
-// Funkcja dołączenia do pokoju
+// Dołącz do pokoju
 window.joinRoom = async function() {
   playerName = document.getElementById("playerName").value.trim();
   if (!playerName) return alert("Podaj swoje imię!");
-
   const code = document.getElementById("joinCode").value.trim();
   if (!code) return alert("Podaj kod pokoju!");
   roomRef = db.ref("rooms/" + code);
 
-  const snapshot = await roomRef.get();
-  if (!snapshot.exists()) return alert("Pokój nie istnieje!");
+  roomRef.get().then(snapshot => {
+    if (!snapshot.exists()) return alert("Pokój nie istnieje!");
 
-  const isHostLocal = playerName.toUpperCase().includes("HOST");
-  const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
-  await playerRef.set({ name: playerName, ready: true, isHost: isHostLocal });
+    const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
+    playerRef.set({ name: playerName, isHost: false });
 
-  document.getElementById("menu").classList.add("hidden");
-  document.getElementById("waiting").classList.remove("hidden");
-  document.getElementById("waitingText").innerText = "Oczekiwanie na rozpoczęcie...";
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("waiting").classList.remove("hidden");
 
-  roomRef.on("value", snap => {
-    const data = snap.val();
-    if (data.started && data.roles && data.word) {
-      if (isHostLocal) {
-        showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
-        document.getElementById("btnNewWord").classList.remove("hidden");
-      } else {
-        showResult("📲 Odkryj kolejne hasło!");
+    roomRef.on("value", snap => {
+      const data = snap.val();
+      const playersList = data.players ? Object.values(data.players).map(p => p.name) : [];
+      document.getElementById("playerList").innerText = `Gracze: ${playersList.join(", ")}`;
+
+      if (data.started && data.roles && data.word) {
+        const role = data.roles[playerId];
+        showResult(role === "impostor" ? "🕵️‍♂️ JESTEŚ IMPOSTOREM!" : "🔤 Hasło zostało rozlosowane! Odkryj je.");
       }
-    }
+    });
   });
 }
 
-// Rozpoczęcie gry / pierwsza runda
-window.startGame = async function() { await startRound(); }
-
-// Rozlosowanie rundy
-window.startRound = async function() {
+// Rozpocznij rundę (tylko host)
+window.startGame = async function() {
   const snapshot = await roomRef.get();
   const data = snapshot.val();
   const players = Object.keys(data.players || {}).filter(pid => !data.players[pid].isHost);
@@ -145,14 +179,7 @@ window.startRound = async function() {
   players.forEach(p => roles[p] = p === impostor ? "impostor" : "normal");
 
   await roomRef.update({ started: true, roles, word });
-
-  // Host widzi nową rundę
-  if (isHost) {
-    showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
-    document.getElementById("btnNewWord").classList.remove("hidden");
-  } else {
-    showResult("📲 Odkryj kolejne hasło!");
-  }
+  showResult("Runda rozpoczęta! Sprawdź swoje ekrany.");
 }
 
 function showResult(text) {
@@ -166,7 +193,6 @@ function showResult(text) {
 document.getElementById("btnCreate").addEventListener("click", createRoom);
 document.getElementById("btnJoin").addEventListener("click", joinRoom);
 document.getElementById("btnStart").addEventListener("click", startGame);
-document.getElementById("btnNewWord").addEventListener("click", startRound);
 </script>
 </body>
 </html>

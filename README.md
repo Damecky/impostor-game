@@ -70,17 +70,27 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getDatabase, ref, set, get, onValue, update, push } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDUMMY-KEY",
-      authDomain: "impostor-demo.firebaseapp.com",
-      databaseURL: "https://impostor-demo-default-rtdb.firebaseio.com",
-      projectId: "impostor-demo",
-      storageBucket: "impostor-demo.appspot.com",
-      messagingSenderId: "000000000000",
-      appId: "1:000000000000:web:000000000000"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAy1mE_Q3fJo9W2Aa9EQUqp0L0Bn53XPHc",
+  authDomain: "impostor-game-ebc12.firebaseapp.com",
+  projectId: "impostor-game-ebc12",
+  storageBucket: "impostor-game-ebc12.firebasestorage.app",
+  messagingSenderId: "561452405867",
+  appId: "1:561452405867:web:24fb4cdf0320c2c3488d2e",
+  measurementId: "G-DKBLTBFHJ5"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
     const words = [
       "TikTok", "mem", "herbata", "rower", "żaba", "Netflix", "sushi", "domówka", "szkoła",

@@ -5,49 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🕵️‍♂️ Impostor Game</title>
 <style>
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #0d1117;
-  color: #fff;
-  text-align: center;
-  margin: 0;
-  padding: 0;
-}
+body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #fff; text-align: center; margin: 0; padding: 0; }
 h1 { color: #00d26a; margin-top: 30px; font-size: 28px; }
-button {
-  background: #00d26a;
-  color: black;
-  border: none;
-  border-radius: 12px;
-  padding: 20px 40px;
-  font-size: 20px;
-  margin: 15px 0;
-  cursor: pointer;
-  width: 80%;
-  max-width: 300px;
-}
+button { background: #00d26a; color: black; border: none; border-radius: 12px; padding: 20px 40px; font-size: 20px; margin: 15px 0; cursor: pointer; width: 80%; max-width: 300px; }
 button:hover { background: #00b85d; }
-input {
-  font-size: 20px;
-  padding: 15px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  width: 80%;
-  max-width: 300px;
-  text-align: center;
-  margin-bottom: 15px;
-}
+input { font-size: 20px; padding: 15px; border-radius: 10px; border: 1px solid #ccc; width: 80%; max-width: 300px; text-align: center; margin-bottom: 15px; }
 .hidden { display: none; }
-.card {
-  margin-top: 50px;
-  padding: 30px;
-  background: #161b22;
-  border-radius: 20px;
-  display: inline-block;
-  font-size: 24px;
-  max-width: 90%;
-  word-wrap: break-word;
-}
+.card { margin-top: 30px; padding: 20px; background: #161b22; border-radius: 20px; display: inline-block; font-size: 22px; max-width: 90%; word-wrap: break-word; }
 </style>
 </head>
 <body>
@@ -64,17 +28,18 @@ input {
 <div id="hostPanel" class="hidden">
   <h2>Kod pokoju: <span id="roomCode"></span></h2>
   <p id="players">Gracze: 0/4</p>
+  <p id="playerList"></p>
   <button id="btnStart">Rozdaj role</button>
+  <button id="btnNextRound" class="hidden">Rozlosuj kolejną rundę</button>
 </div>
 
 <div id="waiting" class="hidden">
   <h2>Oczekiwanie na rozpoczęcie...</h2>
-  <p id="playerList"></p>
 </div>
 
+<div id="myName" class="hidden card"></div>
 <div id="result" class="hidden card"></div>
 
-<!-- Firebase UMD -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
@@ -92,30 +57,42 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Hasła
-const words = [
-  "TikTok","mem","Netflix","lody","rower","żaba","cebula","pączek",
-  "pizza","drama","uwu","sigma","snap","Discord","YouTube","szkoła",
-  "tramwaj","wakacje","park","kot","pies","telefon","komputer","fryzura",
-  "emoji","Chad","Sigma face","ban","flex","kanapka","długopis","kaktus",
-  "drip","domówka","herbata","miłość","gra","keyboard","film","sport",
-  "pralka","sushi","team","keyboard","muzyka","Spotify","pociąg"
-];
+const words = ["TikTok","mem","Netflix","lody","rower","żaba","cebula","pączek","pizza","drama","uwu","sigma","snap","Discord","YouTube","szkoła","tramwaj","wakacje","park","kot","pies","telefon","komputer","fryzura","emoji","Chad","Sigma face","ban","flex","kanapka","długopis","kaktus","drip","domówka","herbata","miłość","gra","keyboard","film","sport","pralka","sushi","team","keyboard","muzyka","Spotify","pociąg"];
 
 let playerId = Math.random().toString(36).substring(2,9);
 let roomRef = null;
 let isHost = false;
 let playerName = "";
 
-function randomCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+function randomCode() { return Math.floor(1000 + Math.random() * 9000).toString(); }
+
+function showMyName() {
+  const nameDiv = document.getElementById("myName");
+  nameDiv.innerText = `Twoje imię: ${playerName}`;
+  nameDiv.classList.remove("hidden");
 }
 
+function showResult(text) {
+  document.getElementById("result").innerText = text;
+  document.getElementById("result").classList.remove("hidden");
+}
+
+async function updatePlayerList() {
+  const snap = await roomRef.get();
+  const data = snap.val();
+  const playersList = data.players ? Object.values(data.players).map(p => p.name) : [];
+  document.getElementById("playerList").innerText = playersList.join(", ");
+  const nonHostCount = playersList.filter(n => !n.includes("(HOST)")).length;
+  document.getElementById("players").innerText = `Gracze: ${nonHostCount}/4`;
+}
+
+// Tworzenie pokoju
 window.createRoom = async function() {
   playerName = document.getElementById("playerName").value.trim();
   if (!playerName) return alert("Podaj imię!");
-  isHost = true;
   playerName += " (HOST)";
+  isHost = true;
+  showMyName();
 
   const code = randomCode();
   roomRef = db.ref("rooms/" + code);
@@ -128,23 +105,28 @@ window.createRoom = async function() {
   const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
   await playerRef.set({ name: playerName });
 
-  roomRef.on("value", snapshot => {
+  roomRef.on("value", async snapshot => {
+    await updatePlayerList();
     const data = snapshot.val();
-    const playersList = data.players ? Object.values(data.players).map(p => p.name) : [];
-    document.getElementById("players").innerText = `Gracze: ${playersList.filter(n => !n.includes("(HOST)")).length}/4`;
-    document.getElementById("playerList").innerText = playersList.join(", ");
+    if (data.started && data.roles && data.word) {
+      const role = data.roles[playerId];
+      if (role === "impostor") showResult("🕵️‍♂️ JESTEŚ IMPOSTOREM!");
+      else if (role !== "host") showResult(`🔤 Hasło: ${data.word}`);
+    }
   });
 }
 
+// Dołączenie do pokoju
 window.joinRoom = async function() {
   playerName = document.getElementById("playerName").value.trim();
   if (!playerName) return alert("Podaj imię!");
+  showMyName();
 
   const code = document.getElementById("joinCode").value.trim();
   if (!code) return alert("Podaj kod pokoju!");
   roomRef = db.ref("rooms/" + code);
 
-  roomRef.get().then(snapshot => {
+  roomRef.get().then(async snapshot => {
     if (!snapshot.exists()) return alert("Pokój nie istnieje!");
 
     const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
@@ -153,52 +135,56 @@ window.joinRoom = async function() {
     document.getElementById("menu").classList.add("hidden");
     document.getElementById("waiting").classList.remove("hidden");
 
-    roomRef.on("value", snap => {
-      const data = snap.val();
-      const playersList = data.players ? Object.values(data.players).map(p => p.name) : [];
-      document.getElementById("playerList").innerText = playersList.join(", ");
-
+    roomRef.on("value", snapshot => {
+      updatePlayerList();
+      const data = snapshot.val();
       if (data.started && data.roles && data.word) {
         const role = data.roles[playerId];
-        if (role === "impostor") {
-          showResult("🕵️‍♂️ JESTEŚ IMPOSTOREM!");
-        } else {
-          showResult(`🔤 Twoje hasło: ${data.word}`);
-        }
+        if (role === "impostor") showResult("🕵️‍♂️ JESTEŚ IMPOSTOREM!");
+        else if (role !== "host") showResult(`🔤 Hasło: ${data.word}`);
       }
     });
   });
 }
 
+// Rozpoczęcie gry (host)
 window.startGame = async function() {
-  const snapshot = await roomRef.get();
-  const data = snapshot.val();
-  const players = Object.keys(data.players || {}).filter(p => !data.players[p].name.includes("(HOST)"));
+  const snap = await roomRef.get();
+  const data = snap.val();
+  const players = Object.keys(data.players || {}).filter(id => !data.players[id].name.includes("(HOST)"));
   if (players.length !== 4) return alert("Musi być dokładnie 4 graczy (bez hosta)!");
 
   const word = words[Math.floor(Math.random() * words.length)];
   const impostor = players[Math.floor(Math.random() * players.length)];
   const roles = {};
-  Object.keys(data.players).forEach(p => {
-    roles[p] = p === impostor ? "impostor" : "normal";
-  });
+  players.forEach(p => roles[p] = p === impostor ? "impostor" : "normal");
+  roles[playerId] = "host";
 
   await roomRef.update({ started: true, roles, word });
-  showResult("Runda rozpoczęta! Sprawdź swoje role i hasło.");
+  document.getElementById("btnNextRound").classList.remove("hidden");
+  showResult("Runda rozpoczęta!");
 }
 
-function showResult(text) {
-  document.getElementById("hostPanel").classList.add("hidden");
-  document.getElementById("waiting").classList.add("hidden");
-  const res = document.getElementById("result");
-  res.innerText = text;
-  res.classList.remove("hidden");
+// Rozlosowanie kolejnej rundy (host)
+window.nextRound = async function() {
+  const snap = await roomRef.get();
+  const data = snap.val();
+  const players = Object.keys(data.players || {}).filter(id => !data.players[id].name.includes("(HOST)"));
+
+  const word = words[Math.floor(Math.random() * words.length)];
+  const impostor = players[Math.floor(Math.random() * players.length)];
+  const roles = {};
+  players.forEach(p => roles[p] = p === impostor ? "impostor" : "normal");
+  roles[playerId] = "host";
+
+  await roomRef.update({ started: true, roles, word });
+  document.getElementById("result").classList.add("hidden");
 }
 
-// Eventy
 document.getElementById("btnCreate").addEventListener("click", createRoom);
 document.getElementById("btnJoin").addEventListener("click", joinRoom);
 document.getElementById("btnStart").addEventListener("click", startGame);
+document.getElementById("btnNextRound").addEventListener("click", nextRound);
 </script>
 </body>
 </html>

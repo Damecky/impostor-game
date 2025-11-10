@@ -54,6 +54,7 @@ input {
 <h1>🕵️‍♂️ Impostor Game</h1>
 
 <div id="menu">
+  <input id="playerName" placeholder="Twoje imię" />
   <button id="btnCreate">Stwórz grę</button>
   <p style="margin:10px 0;">lub</p>
   <input id="joinCode" placeholder="Kod pokoju" />
@@ -64,6 +65,7 @@ input {
   <h2>Kod pokoju: <span id="roomCode"></span></h2>
   <p id="players">Gracze: 0/4</p>
   <button id="btnStart">Rozdaj role</button>
+  <button id="btnNewWord" class="hidden">Nowa runda</button>
 </div>
 
 <div id="waiting" class="hidden">
@@ -72,7 +74,6 @@ input {
 
 <div id="result" class="hidden card"></div>
 
-<!-- Firebase UMD (kompatybilna wersja do przeglądarki) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
@@ -90,7 +91,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Hasła
 const words = [
   "TikTok","mem","Netflix","lody","rower","żaba","cebula","pączek",
   "pizza","drama","uwu","sigma","snap","Discord","YouTube","szkoła",
@@ -103,12 +103,17 @@ const words = [
 let playerId = Math.random().toString(36).substring(2,9);
 let roomRef = null;
 let isHost = false;
+let playerName = "";
 
 function randomCode() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
+// Tworzenie pokoju
 window.createRoom = async function() {
+  playerName = document.getElementById("playerName").value.trim();
+  if (!playerName) return alert("Podaj swoje imię!");
+  
   isHost = true;
   const code = randomCode();
   roomRef = db.ref("rooms/" + code);
@@ -119,40 +124,50 @@ window.createRoom = async function() {
   document.getElementById("roomCode").innerText = code;
 
   const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
-  await playerRef.set({ ready: true });
+  await playerRef.set({ name: playerName, ready: true });
 
   roomRef.on("value", snapshot => {
     const data = snapshot.val();
-    const count = data.players ? Object.keys(data.players).length : 0;
-    document.getElementById("players").innerText = `Gracze: ${count}/4`;
+    const playersList = data.players ? Object.values(data.players).map(p => p.name) : [];
+    document.getElementById("players").innerText = `Gracze: ${playersList.length}/4 (${playersList.join(", ")})`;
+    document.getElementById("btnStart").disabled = playersList.length !== 4;
   });
 }
 
+// Dołączanie do pokoju
 window.joinRoom = async function() {
+  playerName = document.getElementById("playerName").value.trim();
+  if (!playerName) return alert("Podaj swoje imię!");
+  
   const code = document.getElementById("joinCode").value.trim();
   if (!code) return alert("Podaj kod pokoju!");
   roomRef = db.ref("rooms/" + code);
 
-  roomRef.get().then(snapshot => {
-    if (!snapshot.exists()) return alert("Pokój nie istnieje!");
+  const snapshot = await roomRef.get();
+  if (!snapshot.exists()) return alert("Pokój nie istnieje!");
 
-    const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
-    playerRef.set({ ready: true });
+  const playerRef = db.ref(`rooms/${code}/players/${playerId}`);
+  await playerRef.set({ name: playerName, ready: true });
 
-    document.getElementById("menu").classList.add("hidden");
-    document.getElementById("waiting").classList.remove("hidden");
+  document.getElementById("menu").classList.add("hidden");
+  document.getElementById("waiting").classList.remove("hidden");
 
-    roomRef.on("value", snap => {
-      const data = snap.val();
-      if (data.started && data.roles && data.word) {
-        const role = data.roles[playerId];
-        showResult(role === "impostor" ? "🕵️‍♂️ JESTEŚ IMPOSTOREM!" : `🔤 Hasło: ${data.word}`);
-      }
-    });
+  roomRef.on("value", snap => {
+    const data = snap.val();
+    if (data.started && data.roles && data.word) {
+      const role = data.roles[playerId];
+      showResult(role === "impostor" ? "🕵️‍♂️ JESTEŚ IMPOSTOREM!" : `🔤 Hasło: ${data.word}`);
+    }
   });
 }
 
+// Rozpoczęcie gry / pierwsza runda
 window.startGame = async function() {
+  await startRound();
+}
+
+// Nowa runda
+window.startRound = async function() {
   const snapshot = await roomRef.get();
   const data = snapshot.val();
   const players = Object.keys(data.players || {});
@@ -165,8 +180,12 @@ window.startGame = async function() {
 
   await roomRef.update({ started: true, roles, word });
   showResult("Hasło zostało rozlosowane! 📲 Sprawdź swoje ekrany.");
+
+  // Pokaż przycisk hosta do nowej rundy
+  if (isHost) document.getElementById("btnNewWord").classList.remove("hidden");
 }
 
+// Funkcja do wyświetlania wyniku / hasła
 function showResult(text) {
   document.getElementById("hostPanel").classList.add("hidden");
   document.getElementById("waiting").classList.add("hidden");
@@ -178,6 +197,5 @@ function showResult(text) {
 document.getElementById("btnCreate").addEventListener("click", createRoom);
 document.getElementById("btnJoin").addEventListener("click", joinRoom);
 document.getElementById("btnStart").addEventListener("click", startGame);
-</script>
-</body>
-</html>
+document.g
+
